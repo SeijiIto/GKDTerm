@@ -4,13 +4,12 @@
 ![Platform](https://img.shields.io/badge/platform-ROCKNIX%20aarch64-blue.svg)
 ![Status](https://img.shields.io/badge/status-hobby-orange.svg)
 ![C](https://img.shields.io/badge/language-C-blue.svg)
-![SDL2](https://img.shields.io/badge/SDL2-libvterm-black.svg)
 
 GKD Pixel 2 用 ROCKNIX ベース OS 向けの SDL2 + libvterm ターミナルソフトです。
 
 <p align="center">
-  <img src="assets/screenshot1.jpg" width="45%">
-  <img src="assets/screenshot2.jpg" width="45%">
+  <img src="assets/screenshot1.png" width="45%">
+  <img src="assets/screenshot2.png" width="45%">
 </p>
 
 ## 機能
