@@ -199,7 +199,7 @@ chroot "${CHROOT_DIR}" /bin/bash -c "exec su - $CHROOT_USER"
 
 chroot 環境で音を鳴らすには、以下の条件を整える必要があります。
 
-- ユーザーが audio グループに参加していること
+- chroot 環境のユーザーが audio グループに参加していること
 - audio グループの GID がホスト（plumOS）のそれと一致すること
 
 また、cmus は DBus を経由するので、`dbus-run-session cmus` というコマンドで、強制的にDBusセッションを新規作成して起動させるという、ちょっと力技が必要です。
