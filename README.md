@@ -32,7 +32,7 @@ ROCKNIX（aarch64）ベースの OS で動作する想定です。
 
 ### 動作確認
 
-- (plumOS)[https://github.com/game-de-it/plumOS-pixel2]
+- [plumOS](https://github.com/game-de-it/plumOS-pixel2)
 
 ※ 他のデバイスおよび ROCKNIX ベース OS でも動作する可能性があります。
 
