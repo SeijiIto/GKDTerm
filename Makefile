@@ -1,21 +1,33 @@
 # Makefile for GKDTerm (ROCKNIX cross build)
 
 TARGET := gkd_term
-SRC    := gkd_term.c
+SRC_DIR := src
+SRC := \
+	$(SRC_DIR)/app.c \
+	$(SRC_DIR)/input.c \
+	$(SRC_DIR)/main.c \
+	$(SRC_DIR)/render.c \
+	$(SRC_DIR)/scrollback.c \
+	$(SRC_DIR)/session.c \
+	$(SRC_DIR)/term.c \
+	$(SRC_DIR)/text.c \
+	$(SRC_DIR)/ui.c \
+	$(SRC_DIR)/util.c
 
 # Toolchain / sysroot: docker-shell内でexportされている想定
 CC      ?= aarch64-rocknix-linux-gnu-gcc
 SYSROOT ?=
 
 # SDL headers/libs are in sysroot
-CFLAGS  += -O2 -g -Wall -Wextra
+#CFLAGS  += -O2 -g -Wall -Wextra
+CFLAGS  += -O0 -g3 -fno-omit-frame-pointer
 CFLAGS  += --sysroot=$(SYSROOT)
 CFLAGS  += -I$(SYSROOT)/usr/include
 
 LDFLAGS += --sysroot=$(SYSROOT)
 LDFLAGS += -L$(SYSROOT)/usr/lib
 
-LDLIBS  += -lSDL2 -lSDL2_ttf -lutil
+LDLIBS  += -lSDL2 -lSDL2_ttf -lSDL2_image -lutil
 
 # ---- libvterm (vendor build) ----
 USE_VTERM ?= 1
@@ -39,7 +51,10 @@ ifeq ($(USE_VTERM),1)
   OBJ_EXTRA += $(VTERM_OBJ)
 endif
 
+CFLAGS += -MMD -MP
 OBJ := $(SRC:.c=.o) $(OBJ_EXTRA)
+DEP := $(OBJ:.o=.d)
+-include $(DEP)
 
 .PHONY: all clean push run print-vars
 
@@ -53,6 +68,7 @@ $(TARGET): $(OBJ)
 
 clean:
 	rm -f $(TARGET) *.o
+	rm -f $(SRC_DIR)/*.o
 	rm -f $(VTERM_DIR)/src/*.o
 
 print-vars:
