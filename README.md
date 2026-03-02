@@ -42,7 +42,6 @@ ROCKNIX（aarch64）ベースの OS で動作する想定です。
 
    - GKDTerm バイナリ
    - `GKDTerm.sh`
-   - `PixelMplus12-Regular.ttf`
 
 2. EmulationStation に `PORTS` が表示され、
    その中に `GKDTerm` が追加されます。
@@ -287,7 +286,7 @@ Designed for ROCKNIX (aarch64).
 
 Tested on:
 
-- (plumOS)[https://github.com/game-de-it/plumOS-pixel2]
+- [plumOS](https://github.com/game-de-it/plumOS-pixel2)
 
 May work on other ROCKNIX-based devices.
 
@@ -299,7 +298,6 @@ May work on other ROCKNIX-based devices.
 
    - GKDTerm binary
    - `GKDTerm.sh`
-   - `PixelMplus12-Regular.ttf`
 
 2. Launch from `PORTS` in EmulationStation.
 
