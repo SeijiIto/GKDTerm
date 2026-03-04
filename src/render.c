@@ -8,6 +8,13 @@
 #include <time.h>
 
 void render_frame(App* app) {
+  if (app->screen_blank) {
+    SDL_SetRenderDrawColor(app->renderer, 0, 0, 0, 255);
+    SDL_RenderClear(app->renderer);
+    SDL_RenderPresent(app->renderer);
+    return;
+  }
+  
   SDL_SetRenderDrawColor(app->renderer, 0, 0, 0, 255);
   SDL_RenderClear(app->renderer);
 
@@ -25,13 +32,6 @@ void render_frame(App* app) {
   // 中央付近: 修飾キー・モード
   int x = 150;
   int step = ui_text_width_utf8(app, "  "); // だいたいの間隔（フォント依存）
-
-  /*
-  if (mod_active(app->mod_ctrl))  { ui_draw_text_utf8(app, x, 1, (SDL_Color){255,200,255,255}, "󰘴"); x += step + ui_text_width_utf8(app, "󰘴"); }
-  if (mod_active(app->mod_alt))   { ui_draw_text_utf8(app, x, 1, (SDL_Color){255,220,180,255}, "󰘵"); x += step + ui_text_width_utf8(app, "󰘵"); }
-  if (mod_active(app->mod_meta))  { ui_draw_text_utf8(app, x, 1, (SDL_Color){180,220,255,255}, "󰘳"); x += step + ui_text_width_utf8(app, "󰘳"); }
-  if (mod_active(app->mod_shift)) { ui_draw_text_utf8(app, x, 1, (SDL_Color){255,180,180,255}, "󰘶"); x += step + ui_text_width_utf8(app, "󰘶"); }
-  */
 
   const char *ctrl_icon = app->ui_use_nerd_icons ? "󰘴" : "CTRL";
   const char *alt_icon  = app->ui_use_nerd_icons ? "󰘵" : "ALT";
@@ -216,17 +216,14 @@ void draw_cell_rgb(App* app,
 
   SDL_SetTextureColorMod(tex, fg.r, fg.g, fg.b);
 
-  // グリフをセル中央に配置（フォントサイズ誤差や全角での見た目安定用）
+  // グリフをセル中央に配置
   SDL_Rect dst = {
     x + (draw_w - gw) / 2,
     y + (FONT_H - gh) / 2,
     gw,
     gh
   };
-  // セルサイズにそのまま貼る
-  // SDL_Rect dst = { x, y, draw_w, FONT_H };
-  // SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
-  // SDL_SetTextureScaleMode(tex, SDL_ScaleModeNearest);
+  
   SDL_RenderCopy(app->renderer, tex, NULL, &dst);
 }
 

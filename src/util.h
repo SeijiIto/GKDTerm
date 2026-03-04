@@ -14,3 +14,6 @@ void save_screenshot(SDL_Renderer *renderer);
 
 int config_load_or_create(App *app, const char *appname_dir);
 
+int backlight_init(App *app);
+int backlight_off(App *app);
+int backlight_restore(App *app);

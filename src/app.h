@@ -36,6 +36,9 @@
 #define CURSOR_BLINK_HALF_MS 250
 #define BATT_UPDATE_MS 5000
 
+#define MENU_ITEMS (MAX_SESSIONS + 1)
+#define MENU_SCREEN_BLANK_IDX (MAX_SESSIONS)
+
 typedef enum {
   BTN_B = 0,
   BTN_A = 1,
@@ -178,8 +181,23 @@ typedef struct App {
   const KeyDefinition (*layers)[KEY_ROWS][KEY_COLS];
 
   bool ui_use_nerd_icons;
+
+  // screen blank
+  int screen_blank;
+  int backlight_ok;
+  char backlight_dir[256];
+  int backlight_max;
+  int backlight_saved;
+
+  // wake from blank by a button double push
+  int wake_armed;
+  int wake_btn;
+  Uint32 wake_since;
 } App;
 
 static inline Session *SESS(App *app) {
   return &app->sessions[app->active_sess];
 }
+
+void app_enter_blank(App *app);
+void app_exit_blank(App *app);

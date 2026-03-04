@@ -60,33 +60,52 @@ void draw_session_menu_overlay(App* app) {
   int list_x = r.x + 30;
   int list_y0 = r.y + 10 + FONT_H + 12;
 
+  const char *cursor = app->ui_use_nerd_icons ? "" : ">";
+  int y;
+  int hl;
   for (int i = 0; i < MAX_SESSIONS; i++) {
-    int y = list_y0 + i * (FONT_H + 4);
-    int hl = (i == app->menu_sel);
+    y = list_y0 + i * (FONT_H + 4);
+    hl = (i == app->menu_sel);
 
     const char *state = app->sessions[i].used ? "USED" : "EMPTY";
     int locked = (app->sessions[i].used && session_is_locked(&app->sessions[i]));
     int active = (i == app->active_sess);
 
-    // 行テキスト（UTF-8でOK）
+    // 行テキスト
     char line[128];
-    const char *locked_icon = app->ui_use_nerd_icons ? " 󰌾LOCK" : " LOCK";
-    const char *active_icon  = app->ui_use_nerd_icons ? " 󰄬" : "ACTIVE";
+    const char *locked_icon = app->ui_use_nerd_icons ? " 󰌾 LOCK" : " LOCK";
+    const char *active_icon  = app->ui_use_nerd_icons ? " 󰄬" : "*";
     snprintf(line, sizeof(line), "%d: %s%s%s",
              i + 1,
              state,
              locked ? locked_icon : "",
              active ? active_icon : "");
 
-    // 選択カーソル（好きなアイコンにしてOK）
+    // 選択カーソル
     if (hl) {
-      ui_draw_text_utf8(app, r.x + 15, y, (SDL_Color){255,200,255,255}, "");
+      ui_draw_text_utf8(app, r.x + 15, y, (SDL_Color){255,200,255,255}, cursor);
     }
 
     // 選択行は少し明るく
     SDL_Color fg = hl ? (SDL_Color){255,255,255,255} : (SDL_Color){210,210,210,255};
     ui_draw_text_utf8(app, list_x, y, fg, line);
   }
+
+  line_y = list_y0 + MAX_SESSIONS * (FONT_H + 4);
+  y = line_y + 4;
+  hl = (app->menu_sel == MENU_SCREEN_BLANK_IDX);
+
+  // 仕切り線2
+  SDL_SetRenderDrawColor(app->renderer, 64, 64, 64, 255);
+  SDL_RenderDrawLine(app->renderer, r.x + 10, line_y, r.x + r.w - 10, line_y);
+
+  if (hl) ui_draw_text_utf8(app, r.x + 15, y, (SDL_Color){255,200,255,255}, cursor);
+
+  const char *screen_blank_icon = app->ui_use_nerd_icons ? "󰒲  Screen blank" : "Screen blank";
+    
+  ui_draw_text_utf8(app, list_x, y,
+		    hl ? (SDL_Color){255,255,255,255} : (SDL_Color){210,210,210,255},
+		    screen_blank_icon);
 }
 
 void draw_rect_thick_inset(App* app, const SDL_Rect *r, int thickness, SDL_Color c) {

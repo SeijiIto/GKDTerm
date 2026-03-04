@@ -7,6 +7,7 @@
 
 static void mod_cycle(ModState *s);
 static int is_modifier_token(const char *k);
+static int wake_handle_event(App *app, int btn);
 
 void handle_input(App* app) {
   static Uint32 last_repeat_time = 0;
@@ -15,6 +16,13 @@ void handle_input(App* app) {
 
   SDL_Event e;
   while (SDL_PollEvent(&e)) {
+    if (app->screen_blank) {
+      if (e.type == SDL_JOYBUTTONDOWN) {
+	wake_handle_event(app, e.jbutton.button);
+      }
+      continue;
+    }
+    
     if (e.type == SDL_JOYBUTTONDOWN) {
       int b = e.jbutton.button;
 
@@ -203,16 +211,21 @@ void process_session_menu(App* app, int btn) {
       break;
 
     case BTN_UP:
-      app->menu_sel = (app->menu_sel + MAX_SESSIONS - 1) % MAX_SESSIONS;
+      app->menu_sel = (app->menu_sel + MENU_ITEMS - 1) % MENU_ITEMS;
       break;
 
     case BTN_DOWN:
-      app->menu_sel = (app->menu_sel + 1) % MAX_SESSIONS;
+      app->menu_sel = (app->menu_sel + 1) % MENU_ITEMS;
       break;
 
     case BTN_A:
-      session_switch(app, app->menu_sel);
-      session_menu_close(app);
+      if (app->menu_sel == MENU_SCREEN_BLANK_IDX) {
+        session_menu_close(app);
+        app_enter_blank(app);
+      } else {
+        session_switch(app, app->menu_sel);
+        session_menu_close(app);
+      }
       break;
 
     case BTN_X:
@@ -283,4 +296,26 @@ static int is_modifier_token(const char *k) {
          strcmp(k, "Alt") == 0 ||
          strcmp(k, "Meta") == 0 ||
          strcmp(k, "Shift") == 0;
+}
+
+static int wake_handle_event(App *app, int btn) {
+  const Uint32 now = SDL_GetTicks();
+  const Uint32 limit = 350; // ボタンダブルプッシュ猶予
+
+  if (!app->wake_armed) {
+    app->wake_armed = 1;
+    app->wake_btn = btn;
+    app->wake_since = now;
+    return 0; // まだ復帰しない
+  }
+
+  if (btn == app->wake_btn && (now - app->wake_since) <= limit) {
+    app_exit_blank(app);
+    return 1; // 復帰
+  }
+
+  // 条件を満たさなかったらアームを更新（次のチャンス）
+  app->wake_btn = btn;
+  app->wake_since = now;
+  return 0;
 }

@@ -1,6 +1,7 @@
 #include "util.h"
 
 #include <ctype.h>
+#include <dirent.h>
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
@@ -14,6 +15,7 @@ static int file_exists(const char *path);
 static void config_set_defaults(App *app);
 static int config_write_default(const char *cfg_path);
 static int config_load_ini(App *app, const char *cfg_path);
+static int backlight_set(App *app, int brightness);
 
 int get_battery_level(void) {
   int capacity = 0;
@@ -104,6 +106,73 @@ int config_load_or_create(App *app, const char *appname_dir) {
   return 0;
 }
 
+static int read_int_file(const char *path, int *out) {
+  FILE *f = fopen(path, "r");
+  if (!f) return -1;
+  int v = 0;
+  int ok = fscanf(f, "%d", &v);
+  fclose(f);
+  if (ok != 1) return -1;
+  *out = v;
+  return 0;
+}
+
+static int write_int_file(const char *path, int v) {
+  FILE *f = fopen(path, "w");
+  if (!f) return -1;
+  fprintf(f, "%d\n", v);
+  fclose(f);
+  return 0;
+}
+
+int backlight_init(App *app) {
+  app->backlight_ok = 0;
+  snprintf(app->backlight_dir, sizeof(app->backlight_dir), "%s", "/sys/class/backlight/backlight");
+
+  char pmax[512], pcur[512];
+  snprintf(pmax, sizeof(pmax), "%s/max_brightness", app->backlight_dir);
+  snprintf(pcur, sizeof(pcur), "%s/brightness", app->backlight_dir);
+
+  if (read_int_file(pmax, &app->backlight_max) != 0) {
+    fprintf(stderr, "backlight: cannot read %s\n", pmax);
+    return -1;
+  }
+
+  int cur = 0;
+  if (read_int_file(pcur, &cur) != 0) {
+    fprintf(stderr, "backlight: cannot read %s\n", pcur);
+    return -1;
+  }
+
+  app->backlight_saved = cur;
+  app->backlight_ok = 1;
+  fprintf(stderr, "backlight: ok dir=%s max=%d cur=%d\n", app->backlight_dir, app->backlight_max, cur);
+  return 0;
+}
+
+int backlight_off(App *app) {
+  if (!app->backlight_ok) return -1;
+
+  char pcur[512];
+  snprintf(pcur, sizeof(pcur), "%s/brightness", app->backlight_dir);
+
+  int cur = 0;
+  if (read_int_file(pcur, &cur) == 0) {
+    // 0 なら、最低でも 1 は保存しておく（復帰不能防止）
+    app->backlight_saved = (cur > 0) ? cur : (app->backlight_max / 2);
+  } else {
+    app->backlight_saved = (app->backlight_max / 2);
+  }
+  return backlight_set(app, 0);
+}
+
+int backlight_restore(App *app) {
+  if (!app->backlight_ok) return -1;
+  int v = app->backlight_saved;
+  if (v <= 0) v = app->backlight_max / 2;
+  return backlight_set(app, v);
+}
+
 static void trim(char *s) {
   // 前後の空白を除去（簡易）
   char *p = s;
@@ -186,6 +255,20 @@ static int config_load_ini(App *app, const char *cfg_path) {
   }
 
   fclose(f);
+  return 0;
+}
+
+static int backlight_set(App *app, int brightness) {
+  if (!app->backlight_ok) return -1;
+  if (brightness < 0) brightness = 0;
+  if (brightness > app->backlight_max) brightness = app->backlight_max;
+
+  char pcur[512];
+  snprintf(pcur, sizeof(pcur), "%s/brightness", app->backlight_dir);
+  if (write_int_file(pcur, brightness) != 0) {
+    fprintf(stderr, "backlight: write failed %s (%s)\n", pcur, strerror(errno));
+    return -1;
+  }
   return 0;
 }
 

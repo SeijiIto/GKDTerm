@@ -42,10 +42,11 @@ int app_init(App *app) {
 
   app->joy = (SDL_NumJoysticks() > 0) ? SDL_JoystickOpen(0) : NULL;
 
-  // セッション0作成
   app->active_sess = 0;
   session_create(app, 0);
 
+  (void)backlight_init(app);
+  
   return 0;
 }
 
@@ -60,7 +61,9 @@ void app_run(App *app) {
       did_render = 1;
       render_frame(app);
     }
-    SDL_Delay(did_render ? 1 : 12);
+    
+    if (app->screen_blank) SDL_Delay(50); 
+    else SDL_Delay(did_render ? 1 : 12);
   }
 }
 
@@ -77,4 +80,18 @@ void app_shutdown(App *app) {
   if (app->win) { SDL_DestroyWindow(app->win); app->win = NULL; }
 
   SDL_Quit();
+}
+
+void app_enter_blank(App *app) {
+  app->screen_blank = 1;
+  app->wake_armed = 0;
+  (void)backlight_off(app);
+  app->need_redraw = 1;
+}
+
+void app_exit_blank(App *app) {
+  (void)backlight_restore(app);
+  app->screen_blank = 0;
+  app->wake_armed = 0;
+  app->need_redraw = 1;
 }
