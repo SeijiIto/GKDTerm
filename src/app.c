@@ -1,13 +1,12 @@
 #include "app.h"
 
+#include "backlight.h"
+#include "config.h"
 #include "input.h"
 #include "render.h"
-#include "scrollback.h"
 #include "session.h"
-#include "term.h"
 #include "text.h"
 #include "ui.h"
-#include "util.h"
 
 #include <unistd.h>
 
@@ -20,8 +19,8 @@ int app_init(App *app) {
     printf("Failed to load or create config.\n");
   }
   
-  app->def_fg = (SDL_Color){240,240,240,255};
-  app->def_bg = (SDL_Color){0,0,0,255};
+  app->render.def_fg = (SDL_Color){240,240,240,255};
+  app->render.def_bg = (SDL_Color){0,0,0,255};
   app->need_redraw = 1;
 
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK) < 0) return -1;
@@ -37,8 +36,8 @@ int app_init(App *app) {
     return -1;
   }
 
-  app->ui_use_nerd_icons = font_has_all_glyphs_utf8(app, k_required_nerd_icons);
-  app->layers = app->ui_use_nerd_icons ? layers : layers_ascii;
+  app->ui.ui_use_nerd_icons = font_has_all_glyphs_utf8(app, k_required_nerd_icons);
+  app->ui.layers = app->ui.ui_use_nerd_icons ? layers : layers_ascii;
 
   app->joy = (SDL_NumJoysticks() > 0) ? SDL_JoystickOpen(0) : NULL;
 
@@ -46,14 +45,14 @@ int app_init(App *app) {
   session_create(app, 0);
 
   (void)backlight_init(app);
-  
+
   return 0;
 }
 
 void app_run(App *app) {
   while (!app->quit) {
-    handle_input(app);
-    update_timers_and_io(app);
+    input_handle_input(app);
+    ui_update_timers_and_io(app);
 
     int did_render = 0;
     if (app->need_redraw) {
@@ -62,7 +61,7 @@ void app_run(App *app) {
       render_frame(app);
     }
     
-    if (app->screen_blank) SDL_Delay(50); 
+    if (app->backlight.screen_blank) SDL_Delay(50); 
     else SDL_Delay(did_render ? 1 : 12);
   }
 }
@@ -83,15 +82,15 @@ void app_shutdown(App *app) {
 }
 
 void app_enter_blank(App *app) {
-  app->screen_blank = 1;
-  app->wake_armed = 0;
+  app->backlight.screen_blank = 1;
+  app->backlight.wake_armed = 0;
   (void)backlight_off(app);
   app->need_redraw = 1;
 }
 
 void app_exit_blank(App *app) {
   (void)backlight_restore(app);
-  app->screen_blank = 0;
-  app->wake_armed = 0;
+  app->backlight.screen_blank = 0;
+  app->backlight.wake_armed = 0;
   app->need_redraw = 1;
 }

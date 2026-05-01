@@ -4,9 +4,14 @@ TARGET := gkd_term
 SRC_DIR := src
 SRC := \
 	$(SRC_DIR)/app.c \
+	$(SRC_DIR)/backlight.c \
+	$(SRC_DIR)/battery.c \
+	$(SRC_DIR)/clipboard.c \
+	$(SRC_DIR)/config.c \
 	$(SRC_DIR)/input.c \
 	$(SRC_DIR)/main.c \
 	$(SRC_DIR)/render.c \
+	$(SRC_DIR)/screenshot.c \
 	$(SRC_DIR)/scrollback.c \
 	$(SRC_DIR)/session.c \
 	$(SRC_DIR)/term.c \
@@ -23,6 +28,7 @@ SYSROOT ?=
 CFLAGS  += -O0 -g3 -fno-omit-frame-pointer
 CFLAGS  += --sysroot=$(SYSROOT)
 CFLAGS  += -I$(SYSROOT)/usr/include
+CFLAGS  += -MMD -MP
 
 LDFLAGS += --sysroot=$(SYSROOT)
 LDFLAGS += -L$(SYSROOT)/usr/lib
@@ -51,7 +57,6 @@ ifeq ($(USE_VTERM),1)
   OBJ_EXTRA += $(VTERM_OBJ)
 endif
 
-CFLAGS += -MMD -MP
 OBJ := $(SRC:.c=.o) $(OBJ_EXTRA)
 DEP := $(OBJ:.o=.d)
 -include $(DEP)
@@ -67,9 +72,11 @@ $(TARGET): $(OBJ)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(TARGET) *.o
+	rm -f $(TARGET)
 	rm -f $(SRC_DIR)/*.o
+	rm -f $(SRC_DIR)/*.d
 	rm -f $(VTERM_DIR)/src/*.o
+	rm -f $(VTERM_DIR)/src/*.d
 
 print-vars:
 	@echo "CC=$(CC)"

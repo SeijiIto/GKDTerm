@@ -1,14 +1,14 @@
 #include "ui.h"
 
+#include "battery.h"
+#include "clipboard.h"
+#include "screenshot.h"
 #include "session.h"
-#include "scrollback.h"
-#include "util.h"
 
 #include <time.h>
 
-static SDL_Color mod_color(ModState st, SDL_Color base);
-static const char *mod_suffix(App* app, ModState st);
-
+static SDL_Color ui_mod_color(ModState st, SDL_Color base);
+static const char *ui_mod_suffix(App* app, ModState st);
 
 void ui_draw_text_utf8(App* app, int x, int y, SDL_Color fg, const char *s) {
   if (!s || !s[0]) return;
@@ -33,12 +33,12 @@ int ui_text_width_utf8(App* app, const char *s) {
   return w;
 }
 
-
-void draw_session_menu_overlay(App* app) {
-  SDL_Rect r = { 40, 60, SCREEN_W - 80, SCREEN_H - 228 };
+void ui_draw_session_menu_overlay(App* app) {
+  SDL_Rect r = { MENU_OVERLAY_MARGIN_X, MENU_OVERLAY_MARGIN_Y,
+                 SCREEN_W - MENU_OVERLAY_WIDTH_REDUCE, SCREEN_H - MENU_OVERLAY_HEIGHT_REDUCE };
 
   // 背景
-  SDL_SetRenderDrawColor(app->renderer, 32, 32, 32, 255);
+  SDL_SetRenderDrawColor(app->renderer, MENU_OVERLAY_BG_R, MENU_OVERLAY_BG_G, MENU_OVERLAY_BG_B, 255);
   SDL_RenderFillRect(app->renderer, &r);
 
   // 枠
@@ -46,26 +46,26 @@ void draw_session_menu_overlay(App* app) {
   SDL_RenderDrawRect(app->renderer, &r);
 
   // タイトル
-  const char *title = app->ui_use_nerd_icons ?
+  const char *title = app->ui.ui_use_nerd_icons ?
     "󰆍 SESSIONS   (󰘌:switch  X:new  Y:del  B:close)" :
     "SESSIONS   (ENT:switch  X:new  Y:del  B:close)" ;
-  ui_draw_text_utf8(app, r.x + 20, r.y + 10, (SDL_Color){240,240,240,255}, title);
+  ui_draw_text_utf8(app, r.x + MENU_OVERLAY_TITLE_X, r.y + MENU_OVERLAY_TITLE_Y, (SDL_Color){240,240,240,255}, title);
 
   // 仕切り線
-  int line_y = r.y + 10 + FONT_H + 4;
+  int line_y = r.y + MENU_OVERLAY_TITLE_Y + FONT_H + MENU_OVERLAY_LINE_OFFSET;
   SDL_SetRenderDrawColor(app->renderer, 120, 120, 120, 255);
   SDL_RenderDrawLine(app->renderer, r.x + 10, line_y, r.x + r.w - 10, line_y);
 
   // リスト
-  int list_x = r.x + 30;
-  int list_y0 = r.y + 10 + FONT_H + 12;
+  int list_x = r.x + MENU_OVERLAY_LIST_X;
+  int list_y0 = r.y + MENU_OVERLAY_TITLE_Y + FONT_H + MENU_OVERLAY_LIST_Y_BASE;
 
-  const char *cursor = app->ui_use_nerd_icons ? "" : ">";
+  const char *cursor = app->ui.ui_use_nerd_icons ? "" : ">";
   int y;
   int hl;
   for (int i = 0; i < MAX_SESSIONS; i++) {
-    y = list_y0 + i * (FONT_H + 4);
-    hl = (i == app->menu_sel);
+    y = list_y0 + i * (FONT_H + MENU_OVERLAY_LIST_Y_SPACING);
+    hl = (i == app->ui.menu_sel);
 
     const char *state = app->sessions[i].used ? "USED" : "EMPTY";
     int locked = (app->sessions[i].used && session_is_locked(&app->sessions[i]));
@@ -73,8 +73,8 @@ void draw_session_menu_overlay(App* app) {
 
     // 行テキスト
     char line[128];
-    const char *locked_icon = app->ui_use_nerd_icons ? " 󰌾 LOCK" : " LOCK";
-    const char *active_icon  = app->ui_use_nerd_icons ? " 󰄬" : "*";
+    const char *locked_icon = app->ui.ui_use_nerd_icons ? " 󰌾 LOCK" : " LOCK";
+    const char *active_icon  = app->ui.ui_use_nerd_icons ? " 󰄬" : "*";
     snprintf(line, sizeof(line), "%d: %s%s%s",
              i + 1,
              state,
@@ -83,7 +83,7 @@ void draw_session_menu_overlay(App* app) {
 
     // 選択カーソル
     if (hl) {
-      ui_draw_text_utf8(app, r.x + 15, y, (SDL_Color){255,200,255,255}, cursor);
+      ui_draw_text_utf8(app, r.x + MENU_OVERLAY_LIST_CURSOR_X, y, (SDL_Color){255,200,255,255}, cursor);
     }
 
     // 選択行は少し明るく
@@ -91,24 +91,24 @@ void draw_session_menu_overlay(App* app) {
     ui_draw_text_utf8(app, list_x, y, fg, line);
   }
 
-  line_y = list_y0 + MAX_SESSIONS * (FONT_H + 4);
-  y = line_y + 4;
-  hl = (app->menu_sel == MENU_SCREEN_BLANK_IDX);
+  line_y = list_y0 + MAX_SESSIONS * (FONT_H + MENU_OVERLAY_LIST_Y_SPACING);
+  y = line_y + MENU_OVERLAY_SEPARATOR_Y_OFFSET;
+  hl = (app->ui.menu_sel == MENU_SCREEN_BLANK_IDX);
 
   // 仕切り線2
   SDL_SetRenderDrawColor(app->renderer, 64, 64, 64, 255);
   SDL_RenderDrawLine(app->renderer, r.x + 10, line_y, r.x + r.w - 10, line_y);
 
-  if (hl) ui_draw_text_utf8(app, r.x + 15, y, (SDL_Color){255,200,255,255}, cursor);
+  if (hl) ui_draw_text_utf8(app, r.x + MENU_OVERLAY_LIST_CURSOR_X, y, (SDL_Color){255,200,255,255}, cursor);
 
-  const char *screen_blank_icon = app->ui_use_nerd_icons ? "󰒲  Screen blank" : "Screen blank";
+  const char *screen_blank_icon = app->ui.ui_use_nerd_icons ? "󰒲  Screen blank" : "Screen blank";
     
   ui_draw_text_utf8(app, list_x, y,
 		    hl ? (SDL_Color){255,255,255,255} : (SDL_Color){210,210,210,255},
 		    screen_blank_icon);
 }
 
-void draw_rect_thick_inset(App* app, const SDL_Rect *r, int thickness, SDL_Color c) {
+void ui_draw_rect_thick_inset(App* app, const SDL_Rect *r, int thickness, SDL_Color c) {
   SDL_SetRenderDrawColor(app->renderer, c.r, c.g, c.b, 255);
 
   SDL_Rect rr = *r;
@@ -122,7 +122,7 @@ void draw_rect_thick_inset(App* app, const SDL_Rect *r, int thickness, SDL_Color
   }
 }
 
-void draw_key_button(App* app, int x0, int y0, int w, int h, const char *label, int selected) {
+void ui_draw_key_button(App* app, int x0, int y0, int w, int h, const char *label, int selected) {
   SDL_Rect r = { x0, y0, w, h };
 
   SDL_SetRenderDrawColor(app->renderer, 16, 16, 16, 255);
@@ -130,7 +130,7 @@ void draw_key_button(App* app, int x0, int y0, int w, int h, const char *label, 
 
   SDL_Color border = selected ? (SDL_Color){184, 0, 184, 255}
                               : (SDL_Color){32, 32, 32, 255};
-  draw_rect_thick_inset(app, &r, selected ? 2 : 1, border);
+  ui_draw_rect_thick_inset(app, &r, selected ? 2 : 1, border);
 
   int tw = 0, th = 0;
   if (TTF_SizeUTF8(app->font, label, &tw, &th) != 0) return;
@@ -146,18 +146,17 @@ void draw_key_button(App* app, int x0, int y0, int w, int h, const char *label, 
   SDL_RenderSetClipRect(app->renderer, NULL);
 }
 
-
-void session_menu_open(App* app) {
-  app->menu_active = 1;
-  app->menu_sel = app->active_sess;
+void ui_session_menu_open(App* app) {
+  app->ui.menu_active = 1;
+  app->ui.menu_sel = app->active_sess;
 }
 
-void session_menu_close(App* app) {
-  app->menu_active = 0;
+void ui_session_menu_close(App* app) {
+  app->ui.menu_active = 0;
 }
 
-void session_menu_delete_selected(App* app) {
-  int idx = app->menu_sel;
+void ui_session_menu_delete_selected(App* app) {
+  int idx = app->ui.menu_sel;
   if (!app->sessions[idx].used) return;
 
   if (session_is_locked(&app->sessions[idx])) {
@@ -171,39 +170,39 @@ void session_menu_delete_selected(App* app) {
   if (sessions_alive_count(app) == 0) {
     session_create(app, 0);
     app->active_sess = 0;
-    session_menu_close(app);
+    ui_session_menu_close(app);
     return;
   }
 
   if (was_active) {
-    int next = find_next_alive(app, idx);
+    int next = session_find_next_alive(app, idx);
     if (next >= 0) app->active_sess = next;
   }
 
-  if (!app->sessions[app->menu_sel].used) {
-    int next = find_next_alive(app, app->menu_sel);
-    if (next >= 0) app->menu_sel = next;
+  if (!app->sessions[app->ui.menu_sel].used) {
+    int next = session_find_next_alive(app, app->ui.menu_sel);
+    if (next >= 0) app->ui.menu_sel = next;
   }
 }
 
-void update_timers_and_io(App* app) {
-  if (app->screenshot_pending) {
+void ui_update_timers_and_io(App* app) {
+  if (app->pending.screenshot_pending) {
     Uint32 now = SDL_GetTicks();
-    if (app->btn_start_down) {
-      app->screenshot_pending = 0;
-    } else if (now - app->screenshot_pending_since >= SCREENSHOT_DELAY_MS) {
-      save_screenshot(app->renderer);
-      app->screenshot_pending = 0;
-    }    
+    if (app->input.btn_start_down) {
+      app->pending.screenshot_pending = 0;
+    } else if (now - app->pending.screenshot_pending_since >= SCREENSHOT_DELAY_MS) {
+      screenshot_save(app->renderer);
+      app->pending.screenshot_pending = 0;
+    }
   }
-  
-  if (app->paste_pending) {
+
+  if (app->pending.paste_pending) {
     Uint32 now = SDL_GetTicks();
-    if (app->btn_select_down) {
-      app->paste_pending = 0;
-    } else if (now - app->paste_pending_since >= PASTE_DELAY_MS) {
-      paste_from_buffers(app);
-      app->paste_pending = 0;
+    if (app->input.btn_select_down) {
+      app->pending.paste_pending = 0;
+    } else if (now - app->pending.paste_pending_since >= PASTE_DELAY_MS) {
+      clipboard_paste(app);
+      app->pending.paste_pending = 0;
       app->need_redraw = 1;
     }
   }
@@ -212,25 +211,25 @@ void update_timers_and_io(App* app) {
 
   time_t t = time(NULL);
   struct tm *tm_now = localtime(&t);
-  if (tm_now && tm_now->tm_min != app->prev_minute) {
-    app->prev_minute = tm_now->tm_min;
+  if (tm_now && tm_now->tm_min != app->status_cache.prev_minute) {
+    app->status_cache.prev_minute = tm_now->tm_min;
     app->need_redraw = 1;
   }
 
   Uint32 now_ms = SDL_GetTicks();
-  if (now_ms - app->last_batt_tick >= BATT_UPDATE_MS) {
-    app->last_batt_tick = now_ms;
-    int b = get_battery_level();
-    if (b != app->cached_batt) {
-      app->cached_batt = b;
+  if (now_ms - app->status_cache.last_batt_tick >= BATT_UPDATE_MS) {
+    app->status_cache.last_batt_tick = now_ms;
+    int b = battery_get_level();
+    if (b != app->status_cache.cached_batt) {
+      app->status_cache.cached_batt = b;
       app->need_redraw = 1;
     }
   }
 
-  if (!app->menu_active && !SESS(app)->region_mode) {
+  if (!app->ui.menu_active && !SESSION(app)->region_mode) {
     int cursor_on = ((now_ms / CURSOR_BLINK_HALF_MS) % 2) == 0;
-    if (cursor_on != app->prev_cursor_on) {
-      app->prev_cursor_on = cursor_on;
+    if (cursor_on != app->status_cache.prev_cursor_on) {
+      app->status_cache.prev_cursor_on = cursor_on;
       app->need_redraw = 1;
     }
   }
@@ -240,7 +239,7 @@ int ui_draw_mod_indicator(App *app, int x, int y, SDL_Color base, const char *ic
   if (st == MOD_OFF) return x;
 
   char buf[64];
-  snprintf(buf, sizeof(buf), "%s%s", icon, mod_suffix(app, st));
+  snprintf(buf, sizeof(buf), "%s%s", icon, ui_mod_suffix(app, st));
 
   SDL_Color fg = (st == MOD_LOCKED)
     ? base                  // LOCKEDはベース色のまま濃くしても良い
@@ -250,7 +249,7 @@ int ui_draw_mod_indicator(App *app, int x, int y, SDL_Color base, const char *ic
   return x + ui_text_width_utf8(app, buf) + ui_text_width_utf8(app, "  ");
 }
 
-static SDL_Color mod_color(ModState st, SDL_Color base) {
+static SDL_Color ui_mod_color(ModState st, SDL_Color base) {
   switch (st) {
     case MOD_ONESHOT: return (SDL_Color){ base.r, base.g, base.b, 255 }; // 通常
     case MOD_LOCKED:  return (SDL_Color){ 255, 255, 255, 255 };         // 白で強調（好みで）
@@ -258,9 +257,9 @@ static SDL_Color mod_color(ModState st, SDL_Color base) {
   }
 }
 
-static const char *mod_suffix(App* app, ModState st) {
-  const char *oneshot_icon = app->ui_use_nerd_icons ? " ¹" : " 1";
-  const char *locked_icon  = app->ui_use_nerd_icons ? " " : " L";
+static const char *ui_mod_suffix(App* app, ModState st) {
+  const char *oneshot_icon = app->ui.ui_use_nerd_icons ? " ¹" : " 1";
+  const char *locked_icon  = app->ui.ui_use_nerd_icons ? " " : " L";
   switch (st) {
     case MOD_ONESHOT: return oneshot_icon;  // 1回だけ、の目印
     case MOD_LOCKED:  return locked_icon;  // Nerd Fontのロック（別の鍵でもOK）

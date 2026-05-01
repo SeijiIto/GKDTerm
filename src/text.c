@@ -37,10 +37,10 @@ int init_font_with_fallbacks(App *app, const char *path, int size) {
 
 void glyph_cache_clear(App* app) {
   for (int i = 0; i < GLYPH_CACHE_SIZE; i++) {
-    if (app->glyph_cache[i].used && app->glyph_cache[i].tex) {
-      SDL_DestroyTexture(app->glyph_cache[i].tex);
+    if (app->render.glyph_cache[i].used && app->render.glyph_cache[i].tex) {
+      SDL_DestroyTexture(app->render.glyph_cache[i].tex);
     }
-    app->glyph_cache[i] = (GlyphCacheEntry){0};
+    app->render.glyph_cache[i] = (GlyphCacheEntry){0};
   }
 }
 
@@ -57,7 +57,7 @@ SDL_Texture *glyph_get_texture(App* app, uint32_t cp, int *out_w, int *out_h) {
 
   // GLYPH_CACHE_SIZE は 2の冪推奨（4096等）
   for (uint32_t probe = 0; probe < GLYPH_CACHE_SIZE; probe++) {
-    GlyphCacheEntry *e = &app->glyph_cache[idx];
+    GlyphCacheEntry *e = &app->render.glyph_cache[idx];
 
     if (e->used) {
       if (e->cp == cp) {

@@ -1,1 +1,6 @@
+backup
+gkd_term
 *.o
+*.d
+compile_commands.json
+.cache

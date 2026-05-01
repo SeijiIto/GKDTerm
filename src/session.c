@@ -11,13 +11,12 @@
 static void session_init(App* app, Session *s);
 static void session_start_shell(Session *s);
 static void session_init_vterm(Session *s);
-
-static int cb_sb_clear(void *user);
-static int cb_sb_pushline4(int cols, const VTermScreenCell *cells, bool continuation, void *user);
+static int session_cb_sb_clear(void *user);
+static int session_cb_sb_pushline4(int cols, const VTermScreenCell *cells, bool continuation, void *user);
 
 static const VTermScreenCallbacks screen_cb = {
-  .sb_clear     = cb_sb_clear,
-  .sb_pushline4 = cb_sb_pushline4,
+  .sb_clear     = session_cb_sb_clear,
+  .sb_pushline4 = session_cb_sb_pushline4,
 };
 
 int session_is_locked(const Session *s) {
@@ -75,8 +74,8 @@ void session_switch(App* app, int idx) {
   if (idx < 0 || idx >= MAX_SESSIONS) return;
   if (!app->sessions[idx].used) session_create(app, idx);
 
-  app->cursor_mode = 0;
-  app->mod_ctrl = app->mod_alt = app->mod_meta = app->mod_shift = 0;
+  app->input.cursor_mode = 0;
+  app->input.mod_ctrl = app->input.mod_alt = app->input.mod_meta = app->input.mod_shift = 0;
 
   app->active_sess = idx;
 }
@@ -105,7 +104,7 @@ int sessions_alive_count(App* app) {
   return n;
 }
 
-int find_next_alive(App* app, int from) {
+int session_find_next_alive(App* app, int from) {
   for (int i = 1; i <= MAX_SESSIONS; i++) {
     int idx = (from + i) % MAX_SESSIONS;
     if (app->sessions[idx].used) return idx;
@@ -156,7 +155,7 @@ static void session_init_vterm(Session *s) {
   vterm_screen_reset(s->vts, 1);
 }
 
-static int cb_sb_clear(void *user) {
+static int session_cb_sb_clear(void *user) {
   Session *s = (Session*)user;
   s->sb_head = 0;
   s->sb_count = 0;
@@ -165,7 +164,7 @@ static int cb_sb_clear(void *user) {
   return 1;
 }
 
-static int cb_sb_pushline4(int cols, const VTermScreenCell *cells, bool continuation, void *user) {
+static int session_cb_sb_pushline4(int cols, const VTermScreenCell *cells, bool continuation, void *user) {
   Session *s = (Session*)user;
 
   ScrollbackCell *dst = s->sb_buf[s->sb_head];
@@ -186,15 +185,15 @@ static int cb_sb_pushline4(int cols, const VTermScreenCell *cells, bool continua
       if (out.ch == 0) out.ch = ' ';
     }
 
-    out.fg = vterm_fg_to_sdl(s->app, s->vts_state, cell->fg);
-    out.bg = vterm_bg_to_sdl(s->app, s->vts_state, cell->bg);
+    out.fg = term_fg_to_sdl(s->app, s->vts_state, cell->fg);
+    out.bg = term_bg_to_sdl(s->app, s->vts_state, cell->bg);
     out.reverse = cell->attrs.reverse ? 1 : 0;
 
     dst[c] = out;
   }
 
   for (int c = maxc; c < TERM_COLS; c++) {
-    dst[c] = (ScrollbackCell){ .ch=' ', .fg=s->app->def_fg, .bg=s->app->def_bg, .width=1, .reverse=0 };
+    dst[c] = (ScrollbackCell){ .ch=' ', .fg=s->app->render.def_fg, .bg=s->app->render.def_bg, .width=1, .reverse=0 };
   }
 
   s->sb_cont[s->sb_head] = continuation ? 1 : 0;

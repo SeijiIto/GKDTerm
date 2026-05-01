@@ -7,4 +7,4 @@ void session_destroy(App *app, int idx);
 void session_switch(App *app, int idx);
 int sessions_pump_io(App *app);
 int sessions_alive_count(App *app);
-int find_next_alive(App *app, int from);
+int session_find_next_alive(App *app, int from);
